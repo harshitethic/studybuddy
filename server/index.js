@@ -132,7 +132,17 @@ app.post("/api/coach", async (req, res) => {
 });
 
 app.post("/api/quiz", async (req, res) => {
-  const { subject, topics = [], count = 5, model = DEFAULT_MODEL } = req.body;
+  const { subject, topics = [], count = 5, model = DEFAULT_MODEL } = req.body ?? {};
+  if (typeof subject !== "string" || !subject.trim() || subject.length > 120) {
+    return res.status(400).json({ error: "A subject name of up to 120 characters is required." });
+  }
+  if (!Array.isArray(topics) || topics.length > 40 ||
+    topics.some((topic) => typeof topic !== "string" || topic.length > 120)) {
+    return res.status(400).json({ error: "topics must be an array of up to 40 short strings." });
+  }
+  if (!Number.isInteger(count) || count < 1 || count > 20) {
+    return res.status(400).json({ error: "count must be an integer between 1 and 20." });
+  }
   try {
     const data = await ollama("/api/chat", {
       method: "POST",
