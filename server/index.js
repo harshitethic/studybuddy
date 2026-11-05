@@ -1,4 +1,5 @@
 import express from "express";
+import { algorithmicPlan } from "./planner.js";
 
 const app = express();
 const PORT = 8787;
@@ -28,43 +29,6 @@ function cleanJson(text) {
   return JSON.parse(candidate.slice(first, last + 1));
 }
 
-function algorithmicPlan(subjects, hoursPerDay = 3) {
-  const today = new Date();
-  const days = [];
-  const sorted = [...subjects].sort((a, b) => {
-    const da = new Date(a.exam).getTime() - today.getTime();
-    const db = new Date(b.exam).getTime() - today.getTime();
-    return (da - db) + ((a.confidence || 50) - (b.confidence || 50)) * 86400000 / 10;
-  });
-
-  for (let d = 0; d < 7; d++) {
-    const date = new Date(today);
-    date.setDate(date.getDate() + d);
-    const slots = [];
-    let remaining = Math.max(1, Number(hoursPerDay) || 3);
-    for (let i = 0; i < Math.min(3, sorted.length) && remaining >= 0.5; i++) {
-      const s = sorted[i];
-      const topics = s.topics || [];
-      const topic = topics[(s.done || 0) % Math.max(1, topics.length)] || "Revision";
-      const mins = i === 0 ? 50 : 40;
-      slots.push({
-        time: d === 0 ? `${18 + i}:00` : `${17 + i}:00`,
-        subject: s.short || s.name,
-        topic,
-        minutes: mins,
-        type: i === 0 ? "deep-work" : "revision",
-        reason: (s.confidence || 50) < 50 ? "weak topic" : "exam proximity"
-      });
-      remaining -= mins / 60;
-    }
-    if (slots.length) days.push({ date: date.toISOString().slice(0, 10), slots });
-  }
-  return {
-    summary: "A priority-first plan built from exam proximity, confidence and available time.",
-    days
-  };
-}
-
 app.get("/api/health", async (_req, res) => {
   try {
     const data = await ollama("/api/tags");
@@ -81,7 +45,7 @@ app.post("/api/plan", async (req, res) => {
     return res.status(400).json({ error: "Add at least one subject." });
   }
 
-  const fallback = algorithmicPlan(subjects, hoursPerDay);
+  const fallback = algorithmicPlan(subjects, hoursPerDay, days);
 
   try {
     const prompt = `You are an expert college study planner.
