@@ -97,8 +97,13 @@ ${JSON.stringify({ subjects, hoursPerDay, days })}`;
 });
 
 app.post("/api/coach", async (req, res) => {
-  const { message, context = {}, model = DEFAULT_MODEL } = req.body;
-  if (!message?.trim()) return res.status(400).json({ error: "Message is required." });
+  const { message, context = {}, model = DEFAULT_MODEL } = req.body ?? {};
+  if (typeof message !== "string" || !message.trim() || message.length > 4000) {
+    return res.status(400).json({ error: "A message of up to 4000 characters is required." });
+  }
+  if (!context || typeof context !== "object" || Array.isArray(context)) {
+    return res.status(400).json({ error: "context must be an object." });
+  }
 
   try {
     const data = await ollama("/api/chat", {
