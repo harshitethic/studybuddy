@@ -11,6 +11,8 @@ app.use(express.json({ limit: "1mb" }));
 async function ollama(path, options = {}) {
   const response = await fetch(`${OLLAMA_URL}${path}`, {
     ...options,
+    // Never leave plan/quiz/coach waiting indefinitely for an unresponsive local model.
+    signal: options.signal ?? AbortSignal.timeout(15_000),
     headers: { "Content-Type": "application/json", ...(options.headers || {}) }
   });
   if (!response.ok) {
