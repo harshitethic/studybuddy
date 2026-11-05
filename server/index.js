@@ -40,9 +40,21 @@ app.get("/api/health", async (_req, res) => {
 });
 
 app.post("/api/plan", async (req, res) => {
-  const { subjects = [], hoursPerDay = 3, days = 7, model = DEFAULT_MODEL } = req.body;
+  const { subjects = [], hoursPerDay = 3, days = 7, model = DEFAULT_MODEL } = req.body ?? {};
   if (!Array.isArray(subjects) || subjects.length === 0) {
     return res.status(400).json({ error: "Add at least one subject." });
+  }
+  if (!Number.isFinite(hoursPerDay) || hoursPerDay < 0.25 || hoursPerDay > 24) {
+    return res.status(400).json({ error: "hoursPerDay must be between 0.25 and 24." });
+  }
+  if (!Number.isInteger(days) || days < 1 || days > 30) {
+    return res.status(400).json({ error: "days must be an integer between 1 and 30." });
+  }
+  if (subjects.some((subject) => !subject || typeof subject !== "object" ||
+    typeof subject.name !== "string" || !subject.name.trim() ||
+    (subject.topics != null && (!Array.isArray(subject.topics) ||
+      subject.topics.some((topic) => typeof topic !== "string"))))) {
+    return res.status(400).json({ error: "Each subject needs a name and optional string topics." });
   }
 
   const fallback = algorithmicPlan(subjects, hoursPerDay, days);
