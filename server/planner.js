@@ -3,12 +3,28 @@ export function algorithmicPlan(subjects, hoursPerDay = 3, requestedDays = 7, to
   const start = new Date(today);
   const sorted = [...subjects].sort((a, b) => {
     const daysUntil = (subject) => {
+      // Date(null) becomes 1970-01-01, incorrectly making a missing exam
+      // the highest-priority subject.
+      if (typeof subject.exam !== "string" || !subject.exam.trim()) return Infinity;
       const time = new Date(subject.exam).getTime();
       return Number.isFinite(time) ? (time - start.getTime()) / 86400000 : Infinity;
     };
-    const confidence = (subject) => Number.isFinite(Number(subject.confidence))
-      ? Math.min(100, Math.max(0, Number(subject.confidence))) : 50;
-    return (daysUntil(a) - daysUntil(b)) + (confidence(a) - confidence(b)) / 10;
+    const confidence = (subject) => {
+      // Number(null) and Number("") are zero, not an observed low confidence.
+      if (subject.confidence == null || subject.confidence === "") return 50;
+      const value = Number(subject.confidence);
+      return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 50;
+    };
+    const daysA = daysUntil(a);
+    const daysB = daysUntil(b);
+    // Infinity - Infinity is NaN, which silently makes sort preserve input
+    // order and ignore the confidence tie-breaker.
+    if (!Number.isFinite(daysA) && !Number.isFinite(daysB)) {
+      return confidence(a) - confidence(b);
+    }
+    if (!Number.isFinite(daysA)) return 1;
+    if (!Number.isFinite(daysB)) return -1;
+    return (daysA - daysB) + (confidence(a) - confidence(b)) / 10;
   });
   const horizon = Math.min(30, Math.max(1, Math.trunc(Number(requestedDays)) || 7));
   const budgetMinutes = Math.min(1440, Math.max(15, Math.floor(Number(hoursPerDay) * 60) || 180));
