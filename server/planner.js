@@ -11,7 +11,7 @@ export function algorithmicPlan(subjects, hoursPerDay = 3, requestedDays = 7, to
     };
     const confidence = (subject) => {
       // Number(null) and Number("") are zero, not an observed low confidence.
-      if (subject.confidence == null || subject.confidence === "") return 50;
+      if (subject.confidence == null || (typeof subject.confidence === "string" && !subject.confidence.trim())) return 50;
       const value = Number(subject.confidence);
       return Number.isFinite(value) ? Math.min(100, Math.max(0, value)) : 50;
     };
@@ -43,7 +43,9 @@ export function algorithmicPlan(subjects, hoursPerDay = 3, requestedDays = 7, to
       const topics = Array.isArray(subject.topics) ? subject.topics : [];
       const done = Math.max(0, Math.trunc(Number(subject.done)) || 0);
       const topic = topics.length ? topics[(done + d) % topics.length] : "Revision";
-      const confidence = Number(subject.confidence);
+      const confidence = subject.confidence == null ||
+        (typeof subject.confidence === "string" && !subject.confidence.trim())
+        ? NaN : Number(subject.confidence);
       slots.push({
         time: `${d === 0 ? 18 + i : 17 + i}:00`,
         subject: subject.short || subject.name,
