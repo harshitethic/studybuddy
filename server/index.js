@@ -1,5 +1,6 @@
 import express from "express";
 import { algorithmicPlan } from "./planner.js";
+import { validateGeneratedPlan } from "./plan-validation.js";
 
 const app = express();
 const PORT = 8787;
@@ -88,12 +89,13 @@ ${JSON.stringify({ subjects, hoursPerDay, days })}`;
     });
 
     const plan = cleanJson(data.message?.content || "");
+    validateGeneratedPlan(plan, subjects, hoursPerDay, days);
     return res.json({ ...plan, source: "local-ai", model });
   } catch (error) {
     return res.json({
       ...fallback,
       source: "smart-fallback",
-      notice: "Ollama is not available, so the built-in planner generated this schedule."
+      notice: "Ollama was unavailable or returned an invalid plan; the built-in planner generated this schedule."
     });
   }
 });
