@@ -8,7 +8,7 @@ export function localDateKey(date = new Date()) {
 }
 
 export function daysUntilExam(exam, today = new Date()) {
-  if (typeof exam !== "string" || !/^\\d{4}-\\d{2}-\\d{2}$/.test(exam)) return null;
+  if (typeof exam !== "string" || !/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(exam)) return null;
   const [year, month, day] = exam.split("-").map(Number);
   const target = new Date(year, month - 1, day);
   if (target.getFullYear() !== year || target.getMonth() !== month - 1 ||
