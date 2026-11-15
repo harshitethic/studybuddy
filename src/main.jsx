@@ -5,6 +5,7 @@ import {
   LayoutDashboard, MessageCircle, Moon, Plus, RefreshCw, Search, Settings,
   Sparkles, Sun, Target, Trash2, Trophy, X, Zap
 } from "lucide-react";
+import { restoreSubjects } from "./stored-subjects.js";
 import "./styles.css";
 
 const STORAGE = "studybuddy-v2";
@@ -15,7 +16,11 @@ const seed = [
 ];
 
 function load() {
-  try { return JSON.parse(localStorage.getItem(STORAGE)) || seed; } catch { return seed; }
+  try {
+    return restoreSubjects(localStorage.getItem(STORAGE), seed);
+  } catch {
+    return seed;
+  }
 }
 function save(data) { localStorage.setItem(STORAGE, JSON.stringify(data)); }
 function daysUntil(date) {
