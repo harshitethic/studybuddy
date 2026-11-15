@@ -5,6 +5,7 @@ import {
   LayoutDashboard, MessageCircle, Moon, Plus, RefreshCw, Search, Settings,
   Sparkles, Sun, Target, Trash2, Trophy, X, Zap
 } from "lucide-react";
+import { countdownLabel, daysUntilExam, nextUpcomingExam, localDateKey } from "./exam-stats.js";
 import "./styles.css";
 
 const STORAGE = "studybuddy-v2";
@@ -18,11 +19,6 @@ function load() {
   try { return JSON.parse(localStorage.getItem(STORAGE)) || seed; } catch { return seed; }
 }
 function save(data) { localStorage.setItem(STORAGE, JSON.stringify(data)); }
-function daysUntil(date) {
-  const now = new Date();
-  const target = new Date(`${date}T23:59:59`);
-  return Math.max(0, Math.ceil((target - now) / 86400000));
-}
 
 function App() {
   const [subjects, setSubjects] = useState(load);
@@ -107,14 +103,14 @@ function App() {
 }
 
 function Dashboard({subjects, overall, hours, setHours, generatePlan, setModal, toggleTopic}) {
-  const next = [...subjects].sort((a,b)=>daysUntil(a.exam)-daysUntil(b.exam))[0];
+  const next = nextUpcomingExam(subjects);
   return <div className="content">
-    <section className="hero"><div><span className="eyebrow"><i/> THURSDAY, AUGUST 27</span><h1>Good morning, Harshit 👋</h1><p>Let's turn academic panic into a vaguely legal study plan.</p></div><div className="doodle">🧠<small>brain.exe<br/>loading...</small></div></section>
+    <section className="hero"><div><span className="eyebrow"><i/> {new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" }).toUpperCase()}</span><h1>Good morning, Harshit 👋</h1><p>Let's turn academic panic into a vaguely legal study plan.</p></div><div className="doodle">🧠<small>brain.exe<br/>loading...</small></div></section>
 
     <div className="stats">
       <Stat icon={<Target/>} title="Preparation" value={`${overall}%`} sub="all subjects" tone="purple"/>
-      <Stat icon={<CalendarDays/>} title="Next exam" value={next ? `${daysUntil(next.exam)}d` : "—"} sub={next ? `${next.short} • ${next.exam}` : "none"} tone="orange"/>
-      <Stat icon={<Flame/>} title="Study streak" value="7 days" sub="best: 12 days" tone="green"/>
+      <Stat icon={<CalendarDays/>} title="Next exam" value={next ? countdownLabel(next.exam) : "—"} sub={next ? `${next.short} • ${next.exam}` : "No upcoming exams"} tone="orange"/>
+      <Stat icon={<Flame/>} title="Study streak" value="—" sub="Streak tracking not available" tone="green"/>
       <Stat icon={<Clock3/>} title="Daily target" value={`${hours}h`} sub="change below" tone="yellow"/>
     </div>
 
@@ -128,7 +124,7 @@ function Dashboard({subjects, overall, hours, setHours, generatePlan, setModal, 
 
       <section className="card">
         <CardHead title="Exam radar 🚨" sub="What is coming for you"/>
-        {subjects.slice(0,4).map(s=><div className="exam" key={s.id}><div className={`subject-dot ${s.tone}`}>{s.short.slice(0,2)}</div><div className="exam-main"><b>{s.name}</b><small>{s.exam} • {s.confidence}% confidence</small></div><strong className={daysUntil(s.exam)<8?"urgent":""}>{daysUntil(s.exam)}d</strong></div>)}
+        {subjects.slice(0,4).map(s=><div className="exam" key={s.id}><div className={`subject-dot ${s.tone}`}>{s.short.slice(0,2)}</div><div className="exam-main"><b>{s.name}</b><small>{s.exam} • {s.confidence}% confidence</small></div><strong className={daysUntilExam(s.exam) !== null && daysUntilExam(s.exam) >= 0 && daysUntilExam(s.exam) < 8 ? "urgent" : ""}>{countdownLabel(s.exam)}</strong></div>)}
       </section>
     </div>
 
@@ -162,13 +158,13 @@ function Plan({plan,generatePlan,setPage}) {
   </div>
 }
 
-function Subjects({subjects,onAdd,onDelete}){return <div className="content"><section className="page-title"><div><h1>My subjects 📚</h1><p>Your syllabus is the source of truth.</p></div><button className="primary" onClick={onAdd}><Plus size={15}/> Add subject</button></section><div className="subject-grid">{subjects.map(s=><div className="subject-card" key={s.id}><div className="subject-top"><div className={`subject-dot big ${s.tone}`}>{s.short}</div><button className="delete" onClick={()=>onDelete(s.id)}><Trash2 size={15}/></button></div><h2>{s.name}</h2><small>Exam: <b>{s.exam}</b> • {daysUntil(s.exam)} days</small><div className="chips"><span>{s.difficulty}</span><span>{s.confidence}% confidence</span></div><Bar value={s.done.filter(Boolean).length/s.topics.length*100}/><small>{s.done.filter(Boolean).length}/{s.topics.length} topics complete</small></div>)}</div></div>}
+function Subjects({subjects,onAdd,onDelete}){return <div className="content"><section className="page-title"><div><h1>My subjects 📚</h1><p>Your syllabus is the source of truth.</p></div><button className="primary" onClick={onAdd}><Plus size={15}/> Add subject</button></section><div className="subject-grid">{subjects.map(s=><div className="subject-card" key={s.id}><div className="subject-top"><div className={`subject-dot big ${s.tone}`}>{s.short}</div><button className="delete" onClick={()=>onDelete(s.id)}><Trash2 size={15}/></button></div><h2>{s.name}</h2><small>Exam: <b>{s.exam}</b> • {countdownLabel(s.exam)}</small><div className="chips"><span>{s.difficulty}</span><span>{s.confidence}% confidence</span></div><Bar value={s.done.filter(Boolean).length/s.topics.length*100}/><small>{s.done.filter(Boolean).length}/{s.topics.length} topics complete</small></div>)}</div></div>}
 
-function Progress({subjects,overall}){return <div className="content"><section className="page-title"><div><h1>Progress 📈</h1><p>Actual completion from your topic checklists.</p></div></section><div className="progress-hero"><div className="ring"><span>{overall}%</span></div><div><h2>Overall preparation</h2><p>{overall>=70?"You're in decent shape. Keep revising.":"You're not doomed, but consistency matters now."}</p><div className="mini"><b>7🔥 <small>streak</small></b><b>{subjects.reduce((a,s)=>a+s.done.filter(Boolean).length,0)} <small>topics done</small></b></div></div></div><section className="card"><CardHead title="Subject breakdown" sub="Completed topics / total topics"/>{subjects.map(s=><div className="big-progress" key={s.id}><div><b>{s.name}</b><strong>{Math.round(s.done.filter(Boolean).length/s.topics.length*100)}%</strong></div><Bar value={s.done.filter(Boolean).length/s.topics.length*100}/></div>)}</section></div>}
+function Progress({subjects,overall}){return <div className="content"><section className="page-title"><div><h1>Progress 📈</h1><p>Actual completion from your topic checklists.</p></div></section><div className="progress-hero"><div className="ring"><span>{overall}%</span></div><div><h2>Overall preparation</h2><p>{overall>=70?"You're in decent shape. Keep revising.":"You're not doomed, but consistency matters now."}</p><div className="mini"><b>{subjects.reduce((a,s)=>a+s.done.filter(Boolean).length,0)} <small>topics done</small></b></div></div></div><section className="card"><CardHead title="Subject breakdown" sub="Completed topics / total topics"/>{subjects.map(s=><div className="big-progress" key={s.id}><div><b>{s.name}</b><strong>{Math.round(s.done.filter(Boolean).length/s.topics.length*100)}%</strong></div><Bar value={s.done.filter(Boolean).length/s.topics.length*100}/></div>)}</section></div>}
 
 function WeakTopics({weak,setPage}){return <div className="content"><section className="page-title"><div><h1>Weak topics 🫠</h1><p>These should rise to the top of your plan.</p></div><button className="primary" onClick={()=>setPage("Plan")}><Sparkles size={15}/> Build around weak topics</button></section><section className="card">{weak.length?weak.map((w,i)=><div className="weak-item" key={`${w.subject}-${w.topic}-${i}`}><span className="tag">{w.subject}</span><b>{w.topic}</b><div className="weak-bar"><i style={{width:`${w.confidence}%`}}/></div><strong>{w.confidence}%</strong></div>):<div className="empty">No weak topics yet.</div>}</section></div>}
 
-function AddModal({onClose,onAdd}){const[name,setName]=useState("");const[exam,setExam]=useState("2026-09-20");const[difficulty,setDifficulty]=useState("Medium");const[topics,setTopics]=useState("");function submit(){if(!name.trim()||!topics.trim())return;const short=name.trim().split(/\s+/).map(x=>x[0]).join("").slice(0,3).toUpperCase();onAdd({id:Date.now(),name:name.trim(),short,exam,confidence:50,difficulty,topics:topics.split(",").map(x=>x.trim()).filter(Boolean),done:topics.split(",").map(()=>false),tone:"purple"});}return <Modal title="Add subject" onClose={onClose}><div className="form"><label>Subject name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Computer Networks"/></label><label>Exam date<input type="date" value={exam} onChange={e=>setExam(e.target.value)}/></label><label>Difficulty<select value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option>Easy</option><option>Medium</option><option>Hard</option></select></label><label>Topics <small>comma separated</small><textarea value={topics} onChange={e=>setTopics(e.target.value)} placeholder="TCP/IP, Routing, DNS, HTTP"/></label><button className="primary full" disabled={!name.trim()||!topics.trim()} onClick={submit}><Plus size={15}/> Add subject</button></div></Modal>}
+function AddModal({onClose,onAdd}){const[name,setName]=useState("");const[exam,setExam]=useState(localDateKey);const[difficulty,setDifficulty]=useState("Medium");const[topics,setTopics]=useState("");function submit(){if(!name.trim()||!topics.trim())return;const short=name.trim().split(/\s+/).map(x=>x[0]).join("").slice(0,3).toUpperCase();onAdd({id:Date.now(),name:name.trim(),short,exam,confidence:50,difficulty,topics:topics.split(",").map(x=>x.trim()).filter(Boolean),done:topics.split(",").map(()=>false),tone:"purple"});}return <Modal title="Add subject" onClose={onClose}><div className="form"><label>Subject name<input value={name} onChange={e=>setName(e.target.value)} placeholder="Computer Networks"/></label><label>Exam date<input type="date" value={exam} onChange={e=>setExam(e.target.value)}/></label><label>Difficulty<select value={difficulty} onChange={e=>setDifficulty(e.target.value)}><option>Easy</option><option>Medium</option><option>Hard</option></select></label><label>Topics <small>comma separated</small><textarea value={topics} onChange={e=>setTopics(e.target.value)} placeholder="TCP/IP, Routing, DNS, HTTP"/></label><button className="primary full" disabled={!name.trim()||!topics.trim()} onClick={submit}><Plus size={15}/> Add subject</button></div></Modal>}
 
 function Coach({ onClose, subjects }) {
   const [msg, setMsg] = useState("");
