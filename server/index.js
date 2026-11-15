@@ -1,5 +1,6 @@
 import express from "express";
 import { algorithmicPlan } from "./planner.js";
+import { validateQuiz, fallbackQuiz } from "./quiz.js";
 
 const app = express();
 const PORT = 8787;
@@ -166,15 +167,10 @@ Return ONLY JSON: {"questions":[{"question":"...","options":["A","B","C","D"],"a
         }]
       })
     });
-    return res.json({ ...cleanJson(data.message?.content || ""), source: "local-ai" });
+    const quiz = validateQuiz(cleanJson(data.message?.content || ""), count);
+    return res.json({ ...quiz, source: "local-ai" });
   } catch {
-    return res.json({
-      source: "fallback",
-      questions: [
-        { question: `Which topic should you prioritize in ${subject}?`, options: ["The weakest topic", "The easiest topic only", "Nothing", "Only rereading notes"], answer: 0, explanation: "Prioritizing weak areas gives the best return." },
-        { question: "Which study method usually gives stronger recall?", options: ["Active recall", "Only rereading", "Highlighting everything", "Watching without testing"], answer: 0, explanation: "Retrieving information strengthens recall." }
-      ]
-    });
+    return res.json(fallbackQuiz(subject, topics, count));
   }
 });
 
