@@ -26,7 +26,7 @@ export function restoreSubjects(raw, fallback = []) {
 
     const name = subject.name.trim();
     const short = typeof subject.short === "string" && subject.short.trim()
-      ? subject.short.trim() : name.split(/\\s+/).map((part) => part[0]).join("").slice(0, 3).toUpperCase();
+      ? subject.short.trim() : name.split(/[ ]+/).map((part) => part[0]).join("").slice(0, 3).toUpperCase();
     const id = (typeof subject.id === "number" && Number.isSafeInteger(subject.id)) ||
       (typeof subject.id === "string" && subject.id.length > 0)
       ? subject.id : `recovered-${index}`;
